@@ -26,8 +26,8 @@ def trans_file_to_list(filename):
 
 def check_validation(
         data_module, task_string, distri_file,
-        host_list, input_file, module_task_list,
-        task_list):
+        host_list, input_file, module_tasks_iter,
+        module_task_list,task_list):
     """
     首先有了inputfile
     1、-t指定的要分布的task必须是inputfile中已经有了的taskname
@@ -38,38 +38,136 @@ def check_validation(
     6、判断有没有name, command, hostname, 使用dict.has_key()来判断
     """
 
-    module_depend_key_list = data_module[u'dependencies'].keys()
-
     # 检查inputfile和-t指定的task有没有重复值
     check_repeat(task_string, task_list)
-
-    check_repeat(distri_file, host_list)
-
-    check_repeat(input_file + '中tasks中的name', module_task_list)
-
-    check_repeat(input_file + '中dependencies中的name', module_depend_key_list)
-
-
     # 将要修改的task和模板中的task_name做比较，如果要修改的task不是模板中的子集就报错
     if not check_issub(task_list, module_task_list):
-        print "taskname列表：" + str(module_task_list)
+        print "tasks_name列表：" + str(module_task_list)
         print "-t指定的task列表" + str(task_list)
         print "-t指定的任务列表有问题，有些task不在taskname中，请重新指定-t"
         sys.exit(1)
 
-    if not check_issub(module_depend_key_list, module_task_list):
-        print "taskname列表：" + str(module_task_list)
-        print "依赖性键名列表：" + str(module_depend_key_list)
-        print "依赖性键名列表中某个键不在已知的taskname列表中，请重新检查inputfile的depend字段"
+    check_repeat(distri_file, host_list)
+
+
+
+
+
+
+
+    #---------检查必备键-----------------
+    module_key_list = data_module.keys()
+    # 检查模块键列表的重复性
+    check_repeat(str(module_key_list),module_key_list)
+    list_ = [u"name",u"tasks",u"cron_schedule",u"dependencies",u"notes"]
+
+    list_2 = [u"name",u"tasks",u"cron_schedule",u"notes"]
+    # 检查模块中键的合法性：dependencies可选，其他的都要一样
+    check_issub(module_key_list,list_)
+    if not check_issub(module_key_list,list_):
+        print "Error: 模块的'name','cron_schedule','notes','tasks'键必须有并且不能重复，'dependencies'可选"
         sys.exit(1)
 
-    for i in module_depend_key_list:
-
-        if not check_issub(data_module['dependencies'][i], module_task_list):
-            print "taskname列表：" + str(module_task_list)
-            print "问题点：" + str(data_module['dependencies'][i])
-            print "依赖性键的值列表中某个元素不在已知的taskname列表中，请重新检查inputfile的depend字段"
+    if len(module_key_list) != len(list_):
+        if set(module_key_list) != set(list_2):
+            print 5
+            print "Error: 模块的'name','cron_schedule','notes','tasks'键必须有并且不能重复，'dependencies'可选"
             sys.exit(1)
+    # -------------------------------------
+
+    # -------------schdule,name,notes----------
+    list_schedule = data_module['cron_schedule'].split()
+    if not len(list_schedule) == 5:
+        print "Error: schedule的格式有误，至少有5个字段"
+        sys.exit(1)
+
+    if data_module['name'] == "" or data_module['name'] == None:
+        print "Error: name字段不能为空，不能为none"
+        sys.exit(1)
+
+    if data_module["notes"] == "" or data_module['notes'] == None:
+        print "Error: notes字段不能为空，不能为none"
+        sys.exit(1)
+        # choice = raw_input("notes is recommended not null, input Y to add now, N to exit: ")
+        # if choice == 'Y':
+        #    notes = raw_input("在这里输入notes内容：")
+    # ----------------------------------------
+
+
+    # -------------检查tasks内部----------
+    check_repeat(input_file + '中tasks中的name', module_task_list)
+    for id_ in module_tasks_iter:
+        command = data_module['tasks'][id_]['command']
+        name = data_module['tasks'][id_]['name']
+        if name == "" or name == None:
+            print "Error: tasks中的task的name值不能为空！"
+            sys.exit(1)
+
+        if command == "" or command == None:
+            print u"Error: task(" + name + u") 的command值不能为空"
+            sys.exit(1)
+
+
+        if u"soft_timeout" in data_module['tasks'][id_].keys():
+            soft_timeout = data_module['tasks'][id_]['soft_timeout']
+
+            if soft_timeout == "" or soft_timeout == None:
+                print u"Error: task(" + name + u") 的soft_timeout不能为空"
+                sys.exit(1)
+
+            if not str(soft_timeout).isdigit():
+                print u"Error: task(" + name + u") 的soft_timeout必须是整数"
+                sys.exit(1)
+
+
+        if u"hard_timeout" in data_module['tasks'][id_].keys():
+            hard_timeout = data_module['tasks'][id_]['hard_timeout']
+
+            if hard_timeout == "" or hard_timeout == None:
+                print u"Error: task(" + name + u") 的hard_timeout不能为空"
+                sys.exit(1)
+
+            if not str(hard_timeout).isdigit():
+                print u"Error: task(" + name + u") 的hard_timeout必须是整数"
+                sys.exit(1)
+
+        if name not in task_list:
+            if u"hostname" not in data_module['tasks'][id_].keys():
+                print u"Error: " + u"未列入-t的task: (" + name  + u")必须要有hostname，请重新指定"
+                sys.exit(1)
+            else:
+                hostname = data_module['tasks'][id_]['hostname']
+                if hostname == "" or hostname == None:
+                    print u"Error: task(" + name + u") 的hostname值不能为空"
+                    sys.exit(1)
+                elif hostname in host_list:
+                    print u"Error: 未列入-t的task: (" + name + u") 的hostname: (" + data_module['tasks'][id_]["hostname"] + u") 不能在" + distri_file + u"中"
+                    sys.exit(1)
+                else:
+                    # 将来做服务器检查
+                    pass
+
+    if "dependencies" in module_key_list:
+        module_depend_key_list = data_module[u'dependencies'].keys()
+        check_repeat(input_file + '中dependencies中的name', module_depend_key_list)
+
+        if not check_issub(module_depend_key_list, module_task_list):
+            print "tasks_name列表：" + str(module_task_list)
+            print "依赖性键名列表：" + str(module_depend_key_list)
+            print "依赖性键名列表中某个键不在已知的taskname列表中，请重新检查inputfile的depend字段"
+            sys.exit(1)
+
+        for i in module_depend_key_list:
+            if not check_issub(data_module['dependencies'][i], module_task_list):
+                print "taskname列表：" + str(module_task_list)
+                print "问题点：" + str(data_module['dependencies'][i])
+                print "依赖性键的值列表中某个元素不在已知的taskname列表中，请重新检查inputfile的depend字段"
+                sys.exit(1)
+
+def check_if_null(arg):
+    if arg == "" or arg == None:
+        print arg + "的值不能为空"
+        sys.exit(1)
 
 
 def check_input_file(data_module):
@@ -85,6 +183,28 @@ def check_input_file(data_module):
     9、hostname要在服务端存在。
     10,没有在-t指定的task必须要有hostname，并且hostname必须存在于服务器中
     """
+    module_key_list = data_module.keys()
+    # 检查模块键列表的重复性
+    check_repeat(str(module_key_list),module_key_list)
+    list_ = ["name","tasks","cron_schedule","dependencies","notes"]
+    list_2 = ["name","tasks","cron_schedule","notes"]
+    # 检查模块中键的合法性：dependencies可选，其他的都要一样
+    check_issub(module_key_list,list_)
+    if len(module_key_list) != len(list_):
+        if not check_issub(module_key_list,list_):
+            print "模块的'name','cron_schedule','notes','tasks'键必须有并且不能重复，'dependencies'可选"
+            sys.exit(1)
+    elif set(module_key_list) != set(list_2):
+            print "模块的'name','cron_schedule','notes','tasks'键必须有并且不能重复，'dependencies'可选"
+            sys.exit(1)
+    else:
+        pass
+
+    if "dependencies" in module_key_list:
+        module_depend_key_list
+
+
+
     pass
 
 
@@ -254,7 +374,7 @@ def update_data_real2(data_module, data_real,
                       task_id, task_list,
                       host_iter, host_list,
                       module_tasks_iter):
-    """update unchanegd tasks in module_tasks_list"""
+    """update unchanegd tasks in module_task_list"""
 
     dict_ = add_empty_task()
 
@@ -435,8 +555,8 @@ def main():
     # check validation
     check_validation(
         data_module, task_string, distri_file,
-        host_list, input_file, module_task_list,
-        task_list)
+        host_list, input_file, module_tasks_iter,
+        module_task_list,task_list)
 
     # unchanged_task_name = [l for l in module_task_list if l not in task_list]
 
