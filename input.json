@@ -1,22 +1,19 @@
 {
   "tasks": [
     {
-      "soft_timeout": 30,
+      "soft_timeout": "b",
       "name": "1",
       "hard_timeout": 20,
-      "hostname": "slave1",
       "command": "echo \"1\""
     },
     {
       "soft_timeout": 1,
       "hard_timeout": 1,
       "name": "2",
-      "command": "echo 'mason/task1.txt'",
-      "hostname": "slave2"
+      "command": "echo 'mason/task1.txt'"
     },
     {
       "name": "3",
-      "hostname": "slave3",
       "command": "echo 'mason/task1.txt'"
     },
     {
