@@ -1,3 +1,0 @@
-include COPYING.txt
-recursive-include docs *.html *.css *.png *.gif
-recursive-include modulefile input.json host.txt
