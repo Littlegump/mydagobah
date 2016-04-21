@@ -398,6 +398,7 @@ def main():
             #  data_module2 = load(inputfile)
             #  print data_module2
             data_module = decode_import_json(inputfile.read())
+            print data_module
         except ValueError, err:
             print "\"" + input_file + "\"格式问题:"
             print err.__class__.__name__, err
