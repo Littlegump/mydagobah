@@ -204,10 +204,6 @@ def check_input_file(data_module):
         module_depend_key_list
 
 
-
-    pass
-
-
 def check_repeat(describe, list_):
     """check if the list_ has repeated item"""
 
@@ -485,6 +481,13 @@ def jsonalize(data_real):
         session.close()
         file_.close()
         os.remove(filename)
+
+
+def usage():
+    print """python dagopost.py <options> <args>
+        -i | --input-file = <jsonfile>
+        -h | --host-file = <hostfile>
+        -t | --task-to-distribute = <tasks>"""
 
 
 def main():
